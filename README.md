@@ -29,11 +29,25 @@ turboderp's `3.05bpw` quant:
 An 8 GB card has ~7.7 GB usable headless, so 6.62 GiB fits with room. Attach a monitor and you lose
 0.3–0.8 GB of that — still fine, but that is where the margin goes.
 
-**What we have not measured, and you should:** our CPU is a 64-core Threadripper. Yours is not. The
-experts run on the CPU, so your decode speed is set by your **memory bandwidth**, not your GPU. The
-arithmetic: ~6 B active parameters at 3.05 bpw ≈ **2.3 GB read per token**. Dual-channel DDR5-5600
-gives ~89 GB/s, which puts the ceiling near **38 tok/s** — close to what we measured, so a laptop
-may land in the same range. That is a prediction, not a result. Run `bench.py` and tell us.
+**Expect a laptop to be slower, and do not trust our number as yours.** The table above came off a
+64-core Threadripper with AVX-512, 1 TB of RAM and an Optane SSD. Every one of those helps, and a
+laptop has none of them. Three things move your result, in roughly this order:
+
+1. **CPU, not GPU.** The experts run on the CPU. A 64-core part with AVX-512 does that arithmetic
+   very differently from 8 performance cores on AVX2 — and Intel disabled AVX-512 on 12th gen and
+   later. Read the line ExLlamaV3 prints at load: `CPU MoE worker started: 48 layers, avx512-vbmi,
+   64 threads`. Whatever it says there is what you are actually running.
+2. **RAM headroom, not just RAM.** The working set is ~48 GB. On our 1 TB box everything left over
+   became page cache and the table was never really read. On a 64 GB machine you have ~10 GB spare
+   for a 32.6 GB table, so most of those reads *do* hit the disk.
+3. **Which disk.** Ours answers a small random read in ~10 µs. A consumer NVMe takes 80–100 µs, and
+   point 2 means you will be doing a lot more of them.
+
+Pure bandwidth arithmetic (~2.3 GB read per token, DDR5-5600 dual channel) gives a ceiling near
+38 tok/s, but that ceiling assumes the CPU keeps up and the table is cached, and on a laptop neither
+holds. **A realistic laptop expectation is closer to 15 tok/s** — still a 177 B model answering at
+reading speed on hardware you already own. Run `bench.py` and tell us what you actually get; both
+directions are worth knowing.
 
 ## Requirements
 
